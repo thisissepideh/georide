@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install flake8
+      - name: Python syntax and undefined names
+        run: flake8 api_service matcher_service driver_simulator --select=E9,F63,F7,F82 --show-source
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: location_service/go.mod
+      - name: Go vet and build
+        working-directory: location_service
+        run: |
+          go vet ./...
+          go build ./...
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create .env for CI
+        run: cp .env.example .env
+      - name: Build and start the stack
+        run: docker compose up -d --build
+      - name: End-to-end test
+        run: |
+          sleep 45
+          USER_ID=$(curl -sf -X POST http://localhost/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI Rider","type":"rider"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['user_id'])")
+          TRIP_ID=$(curl -sf -X POST http://localhost/request_ride \
+            -H "Content-Type: application/json" \
+            -d "{\"rider_id\": $USER_ID, \"latitude\": 34.05, \"longitude\": -118.24}" | python3 -c "import sys,json;print(json.load(sys.stdin)['trip_id'])")
+          for i in $(seq 1 20); do
+            STATUS=$(curl -sf http://localhost/trip/$TRIP_ID | python3 -c "import sys,json;print(json.load(sys.stdin)['status'])")
+            echo "trip $TRIP_ID status: $STATUS"
+            [ "$STATUS" = "assigned" ] && exit 0
+            sleep 3
+          done
+          exit 1
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
