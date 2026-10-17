@@ -1,0 +1,5 @@
+.env
+loki/data/
+__pycache__/
+*.pyc
+.DS_Store

@@ -12,8 +12,8 @@ def run_simulator(driver_id, location_service_url):
         location_data = {
             "driver_id": driver_id,
             # Simulate coordinates around a central point (e.g., downtown)
-            "latitude": round(34.0522 + random.uniform(-0.1, 0.1), 6),
-            "longitude": round(-118.2437 + random.uniform(-0.1, 0.1), 6),
+           "latitude": round(34.0522 + random.uniform(-0.02, 0.02), 6),
+           "longitude": round(-118.2437 + random.uniform(-0.02, 0.02), 6),
         }
         try:
             response = requests.post(

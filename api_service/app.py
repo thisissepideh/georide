@@ -1,6 +1,7 @@
 # api_service/app.py
 import os
 import psycopg2
+import psycopg2.extras   # add this line
 import pika
 import json
 from flask import Flask, request, jsonify
@@ -20,7 +21,7 @@ def get_db_connection():
 @app.route('/register', methods=['POST'])
 def register_user():
     """Registers a new user (rider or driver)."""
-    data = request.get_json()
+    data = request.get_json()   
     user_type = data['type'] # 'rider' or 'driver'
     name = data['name']
 
